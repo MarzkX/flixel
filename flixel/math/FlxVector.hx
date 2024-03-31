@@ -1,6 +1,6 @@
 package flixel.math;
 
-import openfl.util.FlxPool.IFlxPool;
+import flixel.util.FlxPool.IFlxPool;
 import openfl.geom.Matrix;
 import openfl.geom.Point;
 
