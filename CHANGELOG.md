@@ -2,12 +2,12 @@ Mrzk git version (March 25, 2024)
 ------------------------------
 #### Dependencies:
 
-- For FNF ulimate engine (where worked a Entity Mrzk Version) support!
+- For FNF ulimate engine (where worked a [Entity Mrzk Version](https://gamejolt.com/games/entity/859395)) support!
 
 #### Changes and improvements:
 
-- `FlxSoundTray` improved ([#2298](https://github.com/HaxeFlixel/flixel/pull/2298))
-- `flash` packages removed and changed a `openfl` ([#2298](https://github.com/HaxeFlixel/flixel/pull/2298))
+- `FlxSoundTray` improved
+- `flash` packages removed and changed a `openfl`
 
 4.11.0 (January 26, 2022)
 ------------------------------
