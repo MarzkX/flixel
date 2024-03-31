@@ -11,6 +11,7 @@ import openfl.text.TextFormatAlign;
 import flixel.FlxG;
 import flixel.system.FlxAssets;
 import flixel.util.FlxColor;
+import flixel.math.FlxMath;
 #if flash
 import openfl.text.AntiAliasType;
 import openfl.text.GridFitType;
