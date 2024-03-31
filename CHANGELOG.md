@@ -2,7 +2,7 @@ Mrzk git version (March 25, 2024)
 ------------------------------
 #### Dependencies:
 
-- For FNF ulimate engine (where worked a [Entity Mrzk Version](https://gamejolt.com/games/entity/859395)) support!
+- For FNF Ultimate Engine (where worked a [Entity Mrzk Version](https://gamejolt.com/games/entity/859395)) support!
 
 #### Changes and improvements:
 
