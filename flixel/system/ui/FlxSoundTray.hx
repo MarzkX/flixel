@@ -1,17 +1,16 @@
 package flixel.system.ui;
 
 #if FLX_SOUND_SYSTEM
-import openfl.display.Bitmap;
-import openfl.display.BitmapData;
-import openfl.display.Sprite;
-import openfl.Lib;
-import openfl.text.TextField;
-import openfl.text.TextFormat;
-import openfl.text.TextFormatAlign;
 import flixel.FlxG;
 import flixel.system.FlxAssets;
 import flixel.util.FlxColor;
-import flixel.math.FlxMath;
+import openfl.Lib;
+import openfl.display.Bitmap;
+import openfl.display.BitmapData;
+import openfl.display.Sprite;
+import openfl.text.TextField;
+import openfl.text.TextFormat;
+import openfl.text.TextFormatAlign;
 #if flash
 import openfl.text.AntiAliasType;
 import openfl.text.GridFitType;
@@ -19,6 +18,7 @@ import openfl.text.GridFitType;
 
 /**
  * The flixel sound tray, the little volume meter that pops down sometimes.
+ * Accessed via `FlxG.game.soundTray` or `FlxG.sound.soundTray`.
  */
 class FlxSoundTray extends Sprite
 {
@@ -52,9 +52,6 @@ class FlxSoundTray extends Sprite
 
 	/**Whether or not changing the volume should make noise.**/
 	public var silent:Bool = false;
-
-	/**Yeah i can pretend i document my code too -lunar**/
-	public var visual:Bool = true;
 
 	/**
 	 * Sets up the "sound tray", the little volume meter that pops down sometimes.
@@ -111,25 +108,21 @@ class FlxSoundTray extends Sprite
 	}
 
 	/**
-	 * This function just updates the soundtray object.
+	 * This function updates the soundtray object.
 	 */
 	public function update(MS:Float):Void
 	{
-		// Animate stupid sound tray thing
+		// Animate sound tray thing
 		if (_timer > 0)
 		{
-			_timer -= MS / 1000;
+			_timer -= (MS / 1000);
 		}
 		else if (y > -height)
 		{
-			var lerpVal:Float = Math.max(0, Math.min(1, MS / 200));
-			y = FlxMath.lerp(y, -(height+1), lerpVal);
-			
-			if (y < -height/2)
-				for (child in 0...numChildren)
-					getChildAt(child).alpha = FlxMath.remapToRange(y, -height/2, -height, 1, 0);
+			y -= (MS / 1000) * height * 0.85;
 
-			if (y <= -height && visible) {
+			if (y <= -height)
+			{
 				visible = false;
 				active = false;
 
@@ -142,7 +135,7 @@ class FlxSoundTray extends Sprite
 					FlxG.save.flush();
 				}
 				#end
-			} 
+			}
 		}
 	}
 
@@ -159,8 +152,6 @@ class FlxSoundTray extends Sprite
 			if (sound != null)
 				FlxG.sound.load(sound).play();
 		}
-
-		if (!visual) return;
 
 		_timer = 1;
 		y = 0;
