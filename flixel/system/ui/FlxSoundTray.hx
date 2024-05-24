@@ -45,10 +45,10 @@ class FlxSoundTray extends Sprite
 	var _defaultScale:Float = 2.0;
 
 	/**The sound used when increasing the volume.**/
-	public var volumeUpSound:String = "flixel/sounds/beepUp";
+	public var volumeUpSound:String = "flixel/sounds/beep";
 
 	/**The sound used when decreasing the volume.**/
-	public var volumeDownSound:String = 'flixel/sounds/beepDown';
+	public var volumeDownSound:String = 'flixel/sounds/beep';
 
 	/**Whether or not changing the volume should make noise.**/
 	public var silent:Bool = false;
@@ -119,7 +119,7 @@ class FlxSoundTray extends Sprite
 		}
 		else if (y > -height)
 		{
-			y -= (MS / 1000) * height * 0.85;
+			y -= (MS / 1000) * height * 0.5;
 
 			if (y <= -height)
 			{
