@@ -21,7 +21,7 @@ import openfl.Vector;
 import openfl.geom.Matrix;
 import openfl.geom.Point;
 import openfl.ui.MouseCursor;
-import openfl.ui.MouseCursorData;
+import flash.ui.MouseCursorData;
 #end
 
 @:bitmap("assets/images/ui/cursor.png")
@@ -51,6 +51,11 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 	 * sits at the right "height". Not used on flash with the native cursor API.
 	 */
 	public var cursorContainer(default, null):Sprite;
+	
+	/**
+	 * The current cursor bitmap, if there is one. To set, use the `load` function.
+	 */
+	public var cursor(default, null):Null<Bitmap>;
 
 	/**
 	 * Used to toggle the visiblity of the mouse cursor - works on both
@@ -70,6 +75,26 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 	public var justMoved(get, never):Bool;
 
 	/**
+	 * Distance in pixels the mouse has moved since the last frame in the X direction.
+	 */
+	public var deltaX(get, never):Int;
+
+	/**
+	 * Distance in pixels the mouse has moved since the last frame in the Y direction.
+	 */
+	public var deltaY(get, never):Int;
+
+	/**
+	 * Distance in pixels the mouse has moved in screen space since the last frame in the X direction.
+	 */
+	public var deltaScreenX(get, never):Int;
+
+	/**
+	 * Distance in pixels the mouse has moved in screen space since the last frame in the Y direction.
+	 */
+	public var deltaScreenY(get, never):Int;
+
+	/**
 	 * Check to see if the left mouse button is currently pressed.
 	 */
 	public var pressed(get, never):Bool;
@@ -78,6 +103,12 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 	 * Check to see if the left mouse button has just been pressed.
 	 */
 	public var justPressed(get, never):Bool;
+
+	/**
+	 * Check to see if the left mouse button is currently not pressed.
+	 * @since 5.0.0
+	 */
+	public var released(get, never):Bool;
 
 	/**
 	 * Check to see if the left mouse button has just been released.
@@ -100,6 +131,12 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 	 * Check to see if the right mouse button has just been pressed.
 	 */
 	public var justPressedRight(get, never):Bool;
+	
+	/**
+	 * Check to see if the right mouse button is currently not pressed.
+	 * @since 5.0.0
+	 */
+	public var releasedRight(get, never):Bool;
 
 	/**
 	 * Check to see if the right mouse button has just been released.
@@ -121,6 +158,12 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 	 * Check to see if the middle mouse button has just been pressed.
 	 */
 	public var justPressedMiddle(get, never):Bool;
+
+	/**
+	 * Check to see if the middle mouse button is currently not pressed.
+	 * @since 5.0.0
+	 */
+	public var releasedMiddle(get, never):Bool;
 
 	/**
 	 * Check to see if the middle mouse button has just been released.
@@ -154,11 +197,8 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 	var _rightButton:FlxMouseButton;
 	#end
 
-	/**
-	 * This is just a reference to the current cursor image, if there is one.
-	 */
-	var _cursor:Bitmap = null;
-
+	@:deprecated("_cursor is deprecated, use the new, public cursor, instead")
+    var _cursor(get, set):Bitmap;
 	var _cursorBitmapData:BitmapData;
 	var _wheelUsed:Bool = false;
 	var _visibleWhenFocusLost:Bool = true;
@@ -173,11 +213,12 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 	var _lastLeftButtonState:FlxInputState;
 
 	/**
-	 * Helper variables to see if the mouse has moved since the last update.
+	 * Helper variables to see if the mouse has moved since the last update, and by how much.
 	 */
 	var _prevX:Int = 0;
-
 	var _prevY:Int = 0;
+	var _prevScreenX:Int = 0;
+	var _prevScreenY:Int = 0;
 
 	// Helper variable for cleaning up memory
 	var _stage:Stage;
@@ -205,9 +246,9 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 	public function load(?Graphic:Dynamic, Scale:Float = 1, XOffset:Int = 0, YOffset:Int = 0):Void
 	{
 		#if !FLX_NATIVE_CURSOR
-		if (_cursor != null)
+		if (cursor != null)
 		{
-			FlxDestroyUtil.removeChild(cursorContainer, _cursor);
+			FlxDestroyUtil.removeChild(cursorContainer, cursor);
 		}
 		#end
 
@@ -218,25 +259,25 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 
 		if ((Graphic is Class))
 		{
-			_cursor = Type.createInstance(Graphic, []);
+			cursor = Type.createInstance(Graphic, []);
 		}
 		else if ((Graphic is BitmapData))
 		{
-			_cursor = new Bitmap(cast Graphic);
+			cursor = new Bitmap(cast Graphic);
 		}
 		else if ((Graphic is String))
 		{
-			_cursor = new Bitmap(FlxAssets.getBitmapData(Graphic));
+			cursor = new Bitmap(FlxAssets.getBitmapData(Graphic));
 		}
 		else
 		{
-			_cursor = new Bitmap(new GraphicCursor(0, 0));
+			cursor = new Bitmap(new GraphicCursor(0, 0));
 		}
 
-		_cursor.x = XOffset;
-		_cursor.y = YOffset;
-		_cursor.scaleX = Scale;
-		_cursor.scaleY = Scale;
+		cursor.x = XOffset;
+		cursor.y = YOffset;
+		cursor.scaleX = Scale;
+		cursor.scaleY = Scale;
 
 		#if FLX_NATIVE_CURSOR
 		if (XOffset < 0 || YOffset < 0)
@@ -249,8 +290,8 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 			throw "Negative scale isn't supported for native cursors.";
 		}
 
-		var scaledWidth:Int = Std.int(Scale * _cursor.bitmapData.width);
-		var scaledHeight:Int = Std.int(Scale * _cursor.bitmapData.height);
+		var scaledWidth:Int = Std.int(Scale * cursor.bitmapData.width);
+		var scaledHeight:Int = Std.int(Scale * cursor.bitmapData.height);
 
 		var bitmapWidth:Int = scaledWidth + XOffset;
 		var bitmapHeight:Int = scaledHeight + YOffset;
@@ -262,10 +303,10 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 			_matrix.scale(Scale, Scale);
 			_matrix.translate(XOffset, YOffset);
 		}
-		cursorBitmap.draw(_cursor.bitmapData, _matrix);
+		cursorBitmap.draw(cursor.bitmapData, _matrix);
 		setSimpleNativeCursorData(_cursorDefaultName, cursorBitmap);
 		#else
-		cursorContainer.addChild(_cursor);
+		cursorContainer.addChild(cursor);
 		#end
 	}
 
@@ -275,7 +316,7 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 	 */
 	public function unload():Void
 	{
-		if (_cursor != null)
+		if (cursor != null)
 		{
 			if (cursorContainer.visible)
 			{
@@ -283,7 +324,7 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 			}
 			else
 			{
-				_cursor = FlxDestroyUtil.removeChild(cursorContainer, _cursor);
+				cursor = FlxDestroyUtil.removeChild(cursorContainer, cursor);
 			}
 		}
 	}
@@ -380,7 +421,7 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 		}
 
 		cursorContainer = null;
-		_cursor = null;
+		cursor = null;
 
 		#if FLX_NATIVE_CURSOR
 		_matrix = null;
@@ -452,6 +493,8 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 	{
 		_prevX = x;
 		_prevY = y;
+		_prevScreenX = screenX;
+		_prevScreenY = screenY;
 
 		#if !FLX_UNIT_TEST // Travis segfaults when game.mouseX / Y is accessed
 		setGlobalScreenPositionUnsafe(FlxG.game.mouseX, FlxG.game.mouseY);
@@ -544,11 +587,26 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 	inline function get_justMoved():Bool
 		return _prevX != x || _prevY != y;
 
+	inline function get_deltaX():Int
+		return x - _prevX;
+
+	inline function get_deltaY():Int
+		return y - _prevY;
+
+	inline function get_deltaScreenX():Int
+		return screenX - _prevScreenX;
+
+	inline function get_deltaScreenY():Int
+		return screenY - _prevScreenY;
+
 	inline function get_pressed():Bool
 		return _leftButton.pressed;
 
 	inline function get_justPressed():Bool
 		return _leftButton.justPressed;
+
+	inline function get_released():Bool
+		return _leftButton.released;
 
 	inline function get_justReleased():Bool
 		return _leftButton.justReleased;
@@ -563,6 +621,9 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 	inline function get_justPressedRight():Bool
 		return _rightButton.justPressed;
 
+	inline function get_releasedRight():Bool
+		return _rightButton.released;
+
 	inline function get_justReleasedRight():Bool
 		return _rightButton.justReleased;
 
@@ -574,6 +635,9 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 
 	inline function get_justPressedMiddle():Bool
 		return _middleButton.justPressed;
+
+	inline function get_releasedMiddle():Bool
+		return _middleButton.released;
 
 	inline function get_justReleasedMiddle():Bool
 		return _middleButton.justReleased;
@@ -631,7 +695,7 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 		}
 		else
 		{
-			if (_cursor == null)
+			if (cursor == null)
 				load();
 
 			#if FLX_NATIVE_CURSOR
@@ -693,6 +757,16 @@ class FlxMouse extends FlxPointer implements IFlxInputManager
 		_globalScreenX = record.x;
 		_globalScreenY = record.y;
 		updatePositions();
+	}
+
+	inline function get__cursor()
+	{
+	    return cursor;
+	}
+	
+	inline function set__cursor(value:Bitmap)
+	{
+	    return cursor = value;
 	}
 }
 #end
