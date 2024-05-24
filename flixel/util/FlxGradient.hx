@@ -1,6 +1,5 @@
 package flixel.util;
 
-#if !flash
 import openfl.display.Bitmap;
 import openfl.display.BitmapData;
 import openfl.display.GradientType;
@@ -10,8 +9,6 @@ import openfl.display.SpreadMethod;
 import openfl.geom.Matrix;
 import openfl.geom.Point;
 import openfl.geom.Rectangle;
-#end
-
 import flixel.math.FlxAngle;
 
 /**

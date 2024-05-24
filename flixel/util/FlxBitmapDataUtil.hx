@@ -1,11 +1,8 @@
 package flixel.util;
 
-#if !flash
 import openfl.display.BitmapData;
 import openfl.geom.Point;
 import openfl.geom.Rectangle;
-#end
-
 import flixel.math.FlxAngle;
 import flixel.math.FlxMatrix;
 import flixel.math.FlxPoint;

@@ -1,9 +1,7 @@
 package flixel.util;
 
-#if !flash
 import openfl.display.BitmapData;
 import openfl.geom.Rectangle;
-#end
 
 /**
  * BitmapData pool class.
