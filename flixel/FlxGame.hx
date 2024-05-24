@@ -1,18 +1,16 @@
 package flixel;
 
-#if !flash
+import flixel.graphics.tile.FlxDrawBaseItem;
+import flixel.system.FlxSplash;
+import flixel.util.FlxArrayUtil;
+import flixel.util.FlxDestroyUtil;
+import flixel.util.typeLimit.NextState;
+import openfl.Assets;
 import openfl.Lib;
 import openfl.display.Sprite;
 import openfl.display.StageAlign;
 import openfl.display.StageScaleMode;
 import openfl.events.Event;
-#end
-
-import flixel.graphics.tile.FlxDrawBaseItem;
-import flixel.system.FlxSplash;
-import flixel.util.FlxArrayUtil;
-
-import openfl.Assets;
 import openfl.filters.BitmapFilter;
 #if desktop
 import openfl.events.FocusEvent;
@@ -90,13 +88,13 @@ class FlxGame extends Sprite
 	/**
 	 * A flag for triggering the `preGameStart` and `postGameStart` "events".
 	 */
-	@:allow(flixel.system.FlxSplash)
+	@:allow(flixel.FlxIntroSplash)
 	var _gameJustStarted:Bool = false;
 
 	/**
 	 * Class type of the initial/first game state for the game, usually `MenuState` or something like that.
 	 */
-	var _initialState:Class<FlxState>;
+	var _initialState:NextState;
 
 	/**
 	 * Current game state.
@@ -205,7 +203,7 @@ class FlxGame extends Sprite
 	/**
 	 * If a state change was requested, the new state object is stored here until we switch to it.
 	 */
-	var _requestedState:FlxState;
+	var _nextState:NextState;
 
 	/**
 	 * A flag for keeping track of whether a game reset was requested or not.
@@ -247,48 +245,54 @@ class FlxGame extends Sprite
 	/**
 	 * Instantiate a new game object.
 	 *
-	 * @param GameWidth       The width of your game in game pixels, not necessarily final display pixels (see `Zoom`).
-	 *                        If equal to `0`, the window width specified in the `Project.xml` is used.
-	 * @param GameHeight      The height of your game in game pixels, not necessarily final display pixels (see `Zoom`).
-	 *                        If equal to `0`, the window height specified in the `Project.xml` is used.
-	 * @param InitialState    The class name of the state you want to create and switch to first (e.g. `MenuState`).
-	 * @param Zoom            The default level of zoom for the game's cameras (e.g. `2` = all pixels are now drawn at 2x).
-	 * @param UpdateFramerate How frequently the game should update (default is `60` times per second).
-	 * @param DrawFramerate   Sets the actual display / draw framerate for the game (default is `60` times per second).
-	 * @param SkipSplash      Whether you want to skip the flixel splash screen with `FLX_NO_DEBUG`.
-	 * @param StartFullscreen Whether to start the game in fullscreen mode (desktop targets only).
+	 * @param gameWidth        The width of your game in pixels. If `0`, the `Project.xml` width is used.
+	 *                         If the demensions don't match the `Project.xml`, 
+	 *                         [`scaleMode`](https://api.haxeflixel.com/flixel/system/scaleModes/index.html)
+	 *                         will determine the actual display size of the game.
+	 * @param gameHeight       The height of your game in pixels. If `0`, the `Project.xml` height is used.
+	 *                         If the demensions don't match the `Project.xml`, 
+	 *                         [`scaleMode`](https://api.haxeflixel.com/flixel/system/scaleModes/index.html)
+	 *                         will determine the actual display size of the game.
+	 * @param initialState     A constructor for the initial state, ex: `PlayState.new` or `()->new PlayState()`.
+	 *                         Note: Also allows `Class<FlxState>` for backwards compatibility.
+	 * @param updateFramerate  How frequently the game should update. Default is 60 fps.
+	 * @param drawFramerate    Sets the actual display / draw framerate for the game. Default is 60 fps.
+	 * @param skipSplash       Whether you want to skip the flixel splash screen with `FLX_NO_DEBUG`.
+	 * @param startFullscreen  Whether to start the game in fullscreen mode (desktop targets only).
+	 *
+	 * @see [scale modes](https://api.haxeflixel.com/flixel/system/scaleModes/index.html)
 	 */
-	public function new(GameWidth:Int = 0, GameHeight:Int = 0, ?InitialState:Class<FlxState>, Zoom:Float = 1, UpdateFramerate:Int = 60,
-			DrawFramerate:Int = 60, SkipSplash:Bool = false, StartFullscreen:Bool = false)
+	public function new(gameWidth = 0, gameHeight = 0, ?initialState:InitialState, updateFramerate = 60, drawFramerate = 60, skipSplash = false,
+			startFullscreen = false)
 	{
 		super();
 
 		#if desktop
-		_startFullscreen = StartFullscreen;
+		_startFullscreen = startFullscreen;
 		#end
 
 		// Super high priority init stuff
 		_inputContainer = new Sprite();
 
-		if (GameWidth == 0)
-			GameWidth = FlxG.stage.stageWidth;
-		if (GameHeight == 0)
-			GameHeight = FlxG.stage.stageHeight;
+		if (gameWidth == 0)
+			gameWidth = FlxG.stage.stageWidth;
+		if (gameHeight == 0)
+			gameHeight = FlxG.stage.stageHeight;
 
 		// Basic display and update setup stuff
-		FlxG.init(this, GameWidth, GameHeight, Zoom);
+		FlxG.init(this, gameWidth, gameHeight);
 
-		FlxG.updateFramerate = UpdateFramerate;
-		FlxG.drawFramerate = DrawFramerate;
+		FlxG.updateFramerate = updateFramerate;
+		FlxG.drawFramerate = drawFramerate;
 		_accumulator = _stepMS;
-		_skipSplash = SkipSplash;
+		_skipSplash = skipSplash;
 
 		#if FLX_RECORD
 		_replay = new FlxReplay();
 		#end
 
 		// Then get ready to create the game object for real
-		_initialState = (InitialState == null) ? FlxState : InitialState;
+		_initialState = (initialState == null) ? FlxState.new : initialState.toNextState();
 
 		addEventListener(Event.ADDED_TO_STAGE, create);
 	}
@@ -523,7 +527,7 @@ class FlxGame extends Sprite
 				{
 					FlxG.vcr.stepRequested = false;
 				}
-				else if (_state == _requestedState) // don't pause a state switch request
+				else if (_nextState == null) // don't pause a state switch request
 				{
 					#if FLX_DEBUG
 					debugger.update();
@@ -579,24 +583,17 @@ class FlxGame extends Sprite
 		#if FLX_DEBUG
 		_skipSplash = true;
 		#end
-
-		if (_skipSplash || FlxSplash.nextState != null) // already played
+		
+		if (_skipSplash)
 		{
-			_requestedState = cast Type.createInstance(_initialState, []);
-			if (FlxSplash.nextState == null)
-				_gameJustStarted = true;
+			_nextState = _initialState;
+			_gameJustStarted = true;
 		}
 		else
 		{
-			FlxSplash.nextState = _initialState;
-			_requestedState = new FlxSplash();
+			_nextState = ()->new FlxIntroSplash(_initialState);
 			_skipSplash = true; // only play it once
 		}
-
-		#if FLX_DEBUG
-		if ((_requestedState is FlxSubState))
-			throw "You can't set FlxSubState class instance as the state for you game";
-		#end
 
 		FlxG.reset();
 
@@ -631,7 +628,9 @@ class FlxGame extends Sprite
 		FlxG.bitmap.clearCache();
 
 		// Finally assign and create the new state
-		_state = _requestedState;
+		_state = _nextState.createInstance();
+		_state._constructor = _nextState;
+		_nextState = null;
 
 		if (_gameJustStarted)
 			FlxG.signals.preGameStart.dispatch();
@@ -724,7 +723,7 @@ class FlxGame extends Sprite
 		if (!_state.active || !_state.exists)
 			return;
 
-		if (_state != _requestedState)
+		if (_nextState != null)
 			switchState();
 
 		#if FLX_DEBUG
@@ -758,7 +757,13 @@ class FlxGame extends Sprite
 		#end
 
 		#if FLX_POINTER_INPUT
-		FlxArrayUtil.clearArray(FlxG.swipes);
+		var len = FlxG.swipes.length;
+		while(len-- > 0)
+		{
+			final swipe = FlxG.swipes.pop();
+			if (swipe != null)
+				swipe.destroy();
+		}
 		#end
 
 		filters = filtersEnabled ? _filters : null;
@@ -865,9 +870,16 @@ class FlxGame extends Sprite
 
 		FlxG.cameras.lock();
 
-		FlxG.plugins.draw();
-
-		_state.draw();
+		if (FlxG.plugins.drawOnTop)
+		{
+			_state.draw();
+			FlxG.plugins.draw();
+		}
+		else
+		{
+			FlxG.plugins.draw();
+			_state.draw();
+		}
 
 		if (FlxG.renderTile)
 		{
@@ -896,5 +908,14 @@ class FlxGame extends Sprite
 	{
 		// expensive, only call if necessary
 		return Lib.getTimer();
+	}
+}
+
+private class FlxIntroSplash extends FlxSplash
+{
+	override function startOutro(onOutroComplete:() -> Void)
+	{
+		FlxG.game._gameJustStarted = true;
+		super.startOutro(onOutroComplete);
 	}
 }
